@@ -1,0 +1,5 @@
+# Extra dependencies for running the test suite / fixture generator locally.
+# Not needed by the deployed API — deploy installs requirements.txt only.
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27

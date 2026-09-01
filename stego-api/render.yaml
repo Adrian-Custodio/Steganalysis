@@ -1,0 +1,22 @@
+# Render Blueprint — see https://render.com/docs/blueprint-spec
+# Deploy: connect this repo in the Render dashboard and it will pick this
+# file up automatically ("New +" -> "Blueprint").
+services:
+  - type: web
+    name: stego-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        # Comma-separated list. Set this to your deployed Vercel frontend's
+        # URL (and any others, e.g. localhost for testing against prod API)
+        # in the Render dashboard — the default here is intentionally
+        # permissive-but-empty of production domains.
+        value: http://localhost:3000
+      - key: MAX_FILE_SIZE_BYTES
+        value: "5242880"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+    healthCheckPath: /health
