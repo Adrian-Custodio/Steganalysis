@@ -10,11 +10,11 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ALLOWED_ORIGINS
-        # Comma-separated list. Set this to your deployed Vercel frontend's
-        # URL (and any others, e.g. localhost for testing against prod API)
-        # in the Render dashboard — the default here is intentionally
-        # permissive-but-empty of production domains.
-        value: http://localhost:3000
+        # Comma-separated list. Replace the placeholder Vercel domain below
+        # with your actual deployed frontend URL in the Render dashboard
+        # once you know it (Phase 2 of steganalysis-remaining-steps.md
+        # deploys the backend first, then the frontend).
+        value: https://stego-frontend.vercel.app,http://localhost:3000
       - key: MAX_FILE_SIZE_BYTES
         value: "5242880"
       - key: PYTHON_VERSION
