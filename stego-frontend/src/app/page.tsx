@@ -9,9 +9,8 @@ import type { AnalyzeResponse } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error" | "success";
 
-// Free-tier backends (Render/Railway) can take 20-50s to wake up from
-// sleep. If a request is still pending past this, show a friendlier
-// "waking up" message instead of leaving a bare spinner.
+// Free-tier backends can take 20-50s to wake from sleep — show a
+// friendlier message if a request is still pending past this.
 const SLOW_REQUEST_THRESHOLD_MS = 5_000;
 
 export default function Home() {

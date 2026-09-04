@@ -3,10 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { formatFileSize } from "@/lib/format";
 
-// Mirrors the backend's validation rules (app/config.py in stego-api) so
-// the user gets instant feedback instead of waiting on a round trip.
-// JPEG is rejected because its lossy compression destroys the LSB data
-// both detection methods depend on.
+// Mirrors the backend's validation rules for instant client-side feedback.
 const ACCEPTED_EXTENSIONS = [".png", ".bmp"];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 

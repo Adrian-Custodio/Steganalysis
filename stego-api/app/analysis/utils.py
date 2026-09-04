@@ -1,11 +1,5 @@
-"""
-Shared image-loading and bit-plane helpers used by both detection methods
-(chi_square.py, rs_analysis.py) and by the API layer for building the
-`bit_plane_preview` visualization.
-
-Kept separate from the detection algorithms so those modules can stay focused
-on the statistics, and so this I/O logic is tested/reused in one place.
-"""
+"""Shared image-loading and bit-plane helpers used by the detection
+algorithms and the API layer's bit_plane_preview visualization."""
 
 from __future__ import annotations
 
@@ -23,31 +17,21 @@ class ImageLoadError(ValueError):
 
 
 def load_image_from_bytes(data: bytes) -> Image.Image:
-    """Decode raw file bytes into a Pillow Image.
-
-    Raises ImageLoadError (rather than letting PIL's exception leak) so the
-    API layer can catch one well-defined error type and turn it into a 400.
-    """
+    """Decode raw bytes into a Pillow Image, raising ImageLoadError on failure."""
     try:
         image = Image.open(io.BytesIO(data))
-        image.load()  # force decode now, so truncated/corrupt files fail here
+        image.load()  # force decode now so corrupt files fail here
     except (UnidentifiedImageError, OSError) as exc:
         raise ImageLoadError(f"Could not decode image: {exc}") from exc
     return image
 
 
 def image_to_array(image: Image.Image) -> np.ndarray:
-    """Convert a Pillow Image to a numpy array of shape (H, W, C).
-
-    Normalizes to RGB so downstream code can always assume 3 channels,
-    regardless of whether the source was RGB, RGBA, L (grayscale), or P
-    (palette). Alpha (if present) is dropped — LSB steganography in alpha
-    channels is out of scope for this tool.
-    """
+    """Convert to an (H, W, C) numpy array, normalized to RGB (alpha dropped)."""
     if image.mode not in ("RGB", "L"):
         image = image.convert("RGB")
     array = np.array(image)
-    if array.ndim == 2:  # grayscale -> add a channel axis, then replicate to 3
+    if array.ndim == 2:  # grayscale -> replicate to 3 channels
         array = np.stack([array] * 3, axis=-1)
     return array
 
@@ -58,23 +42,12 @@ def split_channels(array: np.ndarray) -> list[np.ndarray]:
 
 
 def extract_lsb_plane(channel: np.ndarray) -> np.ndarray:
-    """Extract the least-significant-bit plane of a single-channel array.
-
-    Returns an array of the same (H, W) shape with values in {0, 1} —
-    each pixel's LSB. This is the plane LSB steganography writes payload
-    bits into, and what the chi-square/RS methods analyze for statistical
-    anomalies.
-    """
+    """Extract the least-significant-bit plane (values in {0, 1})."""
     return (channel & 1).astype(np.uint8)
 
 
 def lsb_plane_to_png_base64(plane: np.ndarray) -> str:
-    """Render an LSB bit-plane (values in {0, 1}) as a black/white PNG,
-    base64-encoded, for embedding directly in a JSON response.
-
-    Scaling 0/1 -> 0/255 makes the bit pattern visible to the human eye
-    (a raw 0/1 image would render as solid black).
-    """
+    """Render an LSB bit-plane as a base64 black/white PNG (0/1 -> 0/255)."""
     visible = (plane * 255).astype(np.uint8)
     image = Image.fromarray(visible, mode="L")
     buffer = io.BytesIO()
@@ -83,10 +56,7 @@ def lsb_plane_to_png_base64(plane: np.ndarray) -> str:
 
 
 def score_to_verdict(score: float) -> str:
-    """Map a 0-1 suspicion score to a verdict label using the shared
-    heuristic thresholds in config.py, so chi-square and RS analysis (and
-    the overall verdict) all classify consistently.
-    """
+    """Map a 0-1 suspicion score to a verdict label via config.py thresholds."""
     if score < settings.SUSPICIOUS_THRESHOLD:
         return "clean"
     if score < settings.STEGO_THRESHOLD:
@@ -95,11 +65,7 @@ def score_to_verdict(score: float) -> str:
 
 
 def validate_and_load(data: bytes, max_bytes: int) -> Image.Image:
-    """Convenience wrapper: enforce the size limit, then decode.
-
-    Size is checked before decoding since decoding is the more expensive
-    step — no point spending CPU on a file we're going to reject anyway.
-    """
+    """Enforce the size limit, then decode."""
     if len(data) > max_bytes:
         raise ImageLoadError(
             f"File too large: {len(data)} bytes exceeds the {max_bytes}-byte limit."

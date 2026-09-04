@@ -1,13 +1,6 @@
-"""
-Test suite for the steganalysis backend.
-
-Run with:  pytest  (from the stego-api/ directory, with requirements-dev.txt
-installed)
-
-Fixture images are generated once per test session (see `fixtures_dir`
-below) rather than committed as binary files, so the repo stays diffable
-and the fixtures are always in sync with the current embedder.
-"""
+"""Test suite for the steganalysis backend. Run with: pytest (from
+stego-api/, with requirements-dev.txt installed). Fixtures are generated
+per session rather than committed, so the repo stays diffable."""
 
 from __future__ import annotations
 
@@ -108,8 +101,7 @@ def test_embed_and_extract_lsb_roundtrip():
     recovered = extract_lsb_payload(stego)
 
     assert recovered == payload
-    # Embedding should only ever touch LSBs — every value should differ
-    # from the original by at most 1.
+    # Embedding only touches LSBs — values differ by at most 1.
     assert np.abs(stego.astype(int) - image.astype(int)).max() <= 1
 
 
@@ -125,12 +117,9 @@ def test_embed_lsb_raises_when_payload_too_large():
 
 
 def test_chi_square_flags_artificially_equalized_histogram():
-    """A channel constructed so every pair (2k, 2k+1) has near-identical
-    frequency should score high (this is exactly what LSB embedding does
-    to a histogram)."""
+    """A channel with near-identical (2k, 2k+1) frequencies should score
+    high — that's exactly what LSB embedding does to a histogram."""
     rng = np.random.default_rng(1)
-    # For each of 128 pair-buckets, assign an equal number of pixels to
-    # 2k and 2k+1.
     values = []
     for k in range(128):
         count = 20
@@ -214,9 +203,7 @@ def test_fixtures_clean_scores_lower_than_heavily_embedded(fixtures_dir):
     clean_rs = rs_analysis_image(split_channels(clean_array))
     stego_rs = rs_analysis_image(split_channels(stego_array))
 
-    # RS analysis is the more reliable signal per the README; assert on it
-    # directly. Chi-square is checked too but see chi_square.py's docstring
-    # re: its weaker discrimination on noisy/photo-like content.
+    # RS analysis is the more reliable signal per the README.
     assert stego_rs.score > clean_rs.score
     assert stego_chi.score >= clean_chi.score
 

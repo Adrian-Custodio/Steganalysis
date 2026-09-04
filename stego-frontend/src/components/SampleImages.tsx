@@ -1,8 +1,6 @@
 "use client";
 
-// "Try a sample" section — lets users run the tool without providing their
-// own file. Backed by static PNGs in /public/samples/ (copies of the
-// backend's test fixtures: tests/fixtures/photo_like_*.png in stego-api).
+// "Try a sample" section — runs the tool on static PNGs in /public/samples/.
 
 import { useState } from "react";
 

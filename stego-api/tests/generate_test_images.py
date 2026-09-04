@@ -3,18 +3,10 @@ Generates clean + LSB-embedded test fixtures into tests/fixtures/.
 
 Run directly:  python -m tests.generate_test_images
 
-Rather than downloading sample images (network dependency, licensing
-ambiguity, non-reproducible), this generates a small set of synthetic
-"clean" base images procedurally — varied enough (smooth gradients, sharp
-geometric edges, photo-like smoothed noise) to exercise both detection
-methods meaningfully, and identical on every machine/run.
-
-The `embed_lsb` function here is a genuine, from-scratch LSB embedder —
-not a mock. It's intentionally simple (sequential embedding, no
-encryption/spreading) since it exists to *demonstrate* the naive LSB
-embedding this tool detects, not to be a robust stego scheme. It's also
-reusable as the "try it yourself" payload generator mentioned in the
-project README/frontend.
+Base images are generated procedurally (not downloaded) so fixtures are
+reproducible with no network/licensing concerns. embed_lsb is a real,
+from-scratch (simple, unencrypted) LSB embedder — also reused as the
+"try it yourself" payload generator.
 """
 
 from __future__ import annotations
@@ -64,10 +56,7 @@ def embed_lsb(image_array: np.ndarray, payload: bytes) -> np.ndarray:
 
 
 def extract_lsb_payload(image_array: np.ndarray) -> bytes:
-    """Inverse of embed_lsb: read the length header, then that many bytes
-    of payload back out of the LSBs. Included so the embedder is testably
-    round-trippable, and reusable by a future "decode" demo endpoint.
-    """
+    """Inverse of embed_lsb: read the length header, then the payload LSBs."""
     flat = image_array.flatten()
     header_bits = flat[: HEADER_BYTES * 8] & 1
     length = int.from_bytes(_bits_to_bytes(header_bits), byteorder="big")
@@ -78,18 +67,9 @@ def extract_lsb_payload(image_array: np.ndarray) -> bytes:
 
 
 def _make_gradient_image(seed: int = 1) -> np.ndarray:
-    """Smooth diagonal RGB gradient — represents low-noise, highly
-    correlated image content (e.g. sky, studio backdrop).
-
-    A *mathematically exact* linear ramp is a pathological case for the
-    chi-square attack: linspace-to-uint8 rounding makes every value
-    0-255 occur (almost) equally often, which trivially satisfies the
-    "pair frequencies are equal" test the attack looks for — a false
-    positive that has nothing to do with steganography. A small amount
-    of dithering noise breaks that artificial exact-uniformity, the way
-    real-world smooth gradients (which are never mathematically perfect
-    ramps) do.
-    """
+    """Smooth diagonal RGB gradient (e.g. sky, studio backdrop). Dithered
+    slightly so it isn't a mathematically exact ramp, which would falsely
+    trigger the chi-square attack via artificial value-uniformity."""
     rng = np.random.default_rng(seed)
     w, h = IMAGE_SIZE
     x = np.linspace(0, 255, w, dtype=np.float32)
@@ -120,33 +100,20 @@ def _make_shapes_image() -> np.ndarray:
 
 
 def _make_photo_like_image(seed: int = 0) -> np.ndarray:
-    """Smoothed random noise with a coarse low-frequency base — a rough
-    stand-in for photographic texture (fine sensor-noise-like detail on
-    top of smooth large-scale structure).
-
-    Noise amplitude is kept modest and spatially correlated (blurred
-    before adding), similar to real camera sensor noise, rather than raw
-    independent per-pixel noise — iid noise at high amplitude pushes
-    pair frequencies toward equal almost by construction, which (like the
-    exact-linear gradient above) is a synthetic-data artifact that trips
-    the chi-square attack for reasons unrelated to steganography. This
-    was tuned by comparing against a real downloaded photo, where the
-    chi-square attack landed around 0.5 (borderline) on the clean image
-    rather than near-certain "likely_stego".
-    """
+    """Smoothed random noise over a low-frequency base — rough stand-in for
+    photo texture. Noise is spatially correlated (blurred), not raw iid,
+    since iid noise trips the chi-square attack the same way an exact
+    gradient does (see _make_gradient_image); tuned against a real photo."""
     rng = np.random.default_rng(seed)
     w, h = IMAGE_SIZE
 
-    # Low-frequency base: generate at a small size, then upsample so
-    # neighboring pixels are correlated (like real photo structure).
+    # Low-frequency base, upsampled so neighboring pixels are correlated.
     small = rng.integers(0, 256, size=(h // 32, w // 32, 3), dtype=np.uint8)
     base = np.array(
         Image.fromarray(small, mode="RGB").resize((w, h), Image.BICUBIC)
     ).astype(np.float32)
 
-    # Modest, spatially-correlated noise on top, like sensor noise: a
-    # small-amplitude noise field upsampled from a coarser resolution
-    # (blurring it slightly) rather than pure per-pixel iid noise.
+    # Modest, spatially-correlated noise on top, like sensor noise.
     noise_small = rng.normal(loc=0.0, scale=3.0, size=(h // 4, w // 4, 3))
     noise = np.array(
         Image.fromarray(

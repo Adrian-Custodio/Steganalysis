@@ -1,12 +1,9 @@
 import type { AnalyzeResponse } from "./types";
 
-// Backend base URL — points at localhost in dev, the deployed Render/Railway
-// URL in production. Set in .env.local (see .env.example).
+// Backend base URL, set in .env.local (see .env.example).
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Render/Railway free-tier instances sleep after inactivity; the first
-// request after idle can take 20-50s to wake up. 60s gives that room
-// without leaving a genuinely broken request hanging forever.
+// Generous timeout to cover free-tier cold starts (~20-50s).
 const REQUEST_TIMEOUT_MS = 60_000;
 
 export class ApiError extends Error {

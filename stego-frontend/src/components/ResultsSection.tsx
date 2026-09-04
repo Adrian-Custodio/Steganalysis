@@ -1,6 +1,4 @@
-// Renders the four states of an analysis: idle (nothing uploaded yet),
-// loading, error, and the full result — shaped after the backend's
-// POST /analyze response (see stego-api/app/models.py / src/lib/types.ts).
+// Renders the four analysis states: idle, loading, error, and result.
 
 import type { AnalyzeResponse, MethodResult, Verdict } from "@/lib/types";
 

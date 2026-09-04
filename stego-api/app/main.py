@@ -1,10 +1,5 @@
-"""
-FastAPI app: routes, CORS, and request orchestration.
-
-This module is intentionally thin — it validates the upload, delegates to
-the analysis modules for the actual math, and shapes the response. All the
-interesting logic lives in app/analysis/.
-"""
+"""FastAPI app: routes, CORS, and request orchestration. Validation and
+response shaping only — the actual math lives in app/analysis/."""
 
 from __future__ import annotations
 
@@ -55,12 +50,8 @@ def health() -> HealthResponse:
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
-    """Run chi-square attack + RS analysis on an uploaded image.
-
-    Rejects anything that isn't PNG/BMP (JPEG's lossy compression corrupts
-    the raw LSB plane that both methods depend on — see README) and
-    anything over the configured size limit.
-    """
+    """Run chi-square attack + RS analysis on an uploaded image. Rejects
+    non-PNG/BMP files and anything over the configured size limit."""
     _, ext = os.path.splitext(file.filename or "")
     if ext.lower() not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -96,21 +87,12 @@ async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
         verdict=rs_result.verdict,
         explanation=rs_result.explanation,
     )
-    # overall_verdict is derived from the *average* of the two scores,
-    # not the worse of the two verdicts. Chi-square is known to be noisy
-    # on smooth/gradient-heavy or naturally noisy images (see
-    # chi_square.py's docstring, and README limitations) — letting a
-    # single method's known false-positive tendency dictate the overall
-    # result would make the tool cry wolf on plenty of legitimate clean
-    # images. Averaging lets RS analysis (the more robust method)
-    # counterbalance that, while both raw scores stay visible in the
-    # response for anyone who wants to weigh them differently.
+    # Average the two scores rather than taking the worse verdict — chi-square
+    # is noisy on smooth/natural images, so RS analysis counterbalances it.
     overall_score = (chi_result.score + rs_result.score) / 2
     overall_verdict = score_to_verdict(overall_score)
 
-    # Preview built from the first channel (R, or the sole channel for
-    # grayscale-derived images) — enough to visually show the bit-plane
-    # pattern the two methods are reasoning about.
+    # Preview from the first channel — enough to show the bit-plane pattern.
     lsb_plane = extract_lsb_plane(channels[0])
     preview_b64 = lsb_plane_to_png_base64(lsb_plane)
 
